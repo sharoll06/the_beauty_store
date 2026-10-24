@@ -1,0 +1,52 @@
+:root {
+  --plum: #56306f;
+  --plum-dark: #3d1f52;
+  --lavender: #c5a9e0;
+  --lilac: #e9ddf4;
+  --cream: #fff8ee;
+  --rose: #e8cfe1;
+  --ink: #29242e;
+  --muted: #6f6675;
+  --green: #76947d;
+  --glass: rgba(255, 255, 255, 0.6);
+  --glass-strong: rgba(255, 255, 255, 0.78);
+  --border: rgba(255, 255, 255, 0.72);
+  --shadow: 0 24px 70px rgba(70, 42, 92, 0.14);
+}
+
+@theme inline {
+  --color-background: var(--cream);
+  --color-foreground: var(--ink);
+  --font-sans: Arial, Helvetica, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at 10% 4%, rgba(197, 169, 224, 0.5), transparent 31rem),
+    radial-gradient(circle at 92% 24%, rgba(232, 207, 225, 0.55), transparent 27rem),
+    linear-gradient(145deg, #fffaf3 0%, #f7f0fb 48%, #fff8ee 100%);
+  color: var(--ink);
+  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+button, a, [role="button"] { cursor: pointer; }
+button, input, select { font: inherit; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 3px solid rgba(86, 48, 111, 0.28);
+  outline-offset: 3px;
+}
+body.modal-open { overflow: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

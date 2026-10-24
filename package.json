@@ -1,0 +1,24 @@
+{
+  "name": "modo-26",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "vite --config vite.vercel.config.js",
+    "build": "npm run build:vercel",
+    "build:vercel": "vite build --config vite.vercel.config.js",
+    "preview": "vite preview --config vite.vercel.config.js"
+  },
+  "dependencies": {
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "6.0.2",
+    "vite": "8.0.13"
+  },
+  "type": "module",
+  "displayName": "Modo 26"
+}
