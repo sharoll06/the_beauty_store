@@ -1,6 +1,3 @@
--- Modo 26 - Seguridad RLS para Supabase
--- Ejecutar una sola vez desde SQL Editor después de crear las tablas.
-
 alter table public.products enable row level security;
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
