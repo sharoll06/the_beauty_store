@@ -15,13 +15,11 @@ drop policy if exists "Visitantes agregan prendas al pedido" on public.order_ite
 drop policy if exists "Administracion consulta prendas pedidas" on public.order_items;
 
 -- PRODUCTS
--- El público solo ve prendas marcadas como visibles.
 create policy "Catalogo publico visible"
 on public.products for select
 to anon
 using (is_visible = true);
 
--- La administradora autenticada puede ver incluso productos ocultos.
 create policy "Administracion consulta productos"
 on public.products for select
 to authenticated
@@ -44,7 +42,6 @@ to authenticated
 using (true);
 
 -- ORDERS
--- El visitante puede registrar una solicitud con el estado inicial definido.
 create policy "Visitantes crean pedidos"
 on public.orders for insert
 to anon, authenticated
@@ -55,7 +52,6 @@ with check (
   and total = subtotal + delivery_cost
 );
 
--- Solo una sesión administrativa puede consultar o actualizar pedidos.
 create policy "Administracion consulta pedidos"
 on public.orders for select
 to authenticated
@@ -67,8 +63,7 @@ to authenticated
 using (true)
 with check (true);
 
--- ORDER_ITEMS
--- El visitante puede agregar las prendas pertenecientes al pedido que registra.
+-- ORDER_ITEMS.
 create policy "Visitantes agregan prendas al pedido"
 on public.order_items for insert
 to anon, authenticated
@@ -83,8 +78,7 @@ on public.order_items for select
 to authenticated
 using (true);
 
--- STORAGE: bucket products
--- El bucket es público para lectura. Solo usuarios autenticados administran archivos.
+-- STORAGE
 drop policy if exists "Administracion sube imagenes de productos" on storage.objects;
 drop policy if exists "Administracion actualiza imagenes de productos" on storage.objects;
 drop policy if exists "Administracion elimina imagenes de productos" on storage.objects;
