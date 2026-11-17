@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ArrowLeft, ChevronRight, CircleAlert, CircleCheck, ClipboardList, ExternalLink, LogIn, LogOut, MessageCircle, Package, RefreshCw, X } from "lucide-react";
 import "./admin.css";
 import ProductsPanel from "./ProductsPanel";
 
@@ -28,16 +29,41 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  const refreshAccessToken = useCallback(async () => {
+    const stored = sessionStorage.getItem("modo26-admin-session");
+    const currentSession = stored ? JSON.parse(stored) : null;
+    if (!currentSession?.refresh_token) throw new Error("La sesión administrativa venció.");
+    const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: "POST",
+      headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: currentSession.refresh_token }),
+    });
+    if (!response.ok) throw new Error("La sesión administrativa venció.");
+    const refreshed = await response.json();
+    sessionStorage.setItem("modo26-admin-session", JSON.stringify(refreshed));
+    setSession(refreshed);
+    return refreshed.access_token;
+  }, []);
+
   const api = useCallback(async (path, options = {}) => {
-    const token = session?.access_token || SUPABASE_KEY;
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    const request = (token) => fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
       ...options,
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...(options.headers || {}) },
     });
-    if (!response.ok) throw new Error(await response.text());
-    if (response.status === 204) return null;
-    return response.json();
-  }, [session]);
+    let response = await request(session?.access_token || SUPABASE_KEY);
+    if (response.status === 401 && session?.refresh_token) {
+      try {
+        response = await request(await refreshAccessToken());
+      } catch {
+        sessionStorage.removeItem("modo26-admin-session");
+        setSession(null);
+        throw new Error("La sesión venció. Ingresa nuevamente.");
+      }
+    }
+    const responseText = await response.text();
+    if (!response.ok) throw new Error(responseText || "La solicitud no pudo completarse.");
+    return responseText ? JSON.parse(responseText) : null;
+  }, [refreshAccessToken, session]);
 
   const loadOrders = useCallback(async () => {
     if (!session) return;
@@ -109,8 +135,8 @@ export default function AdminDashboard() {
         <p>Ingresa con la cuenta administrativa creada en Supabase.</p>
         <label><span>Correo</span><input type="email" required value={credentials.email} onChange={(e) => setCredentials({ ...credentials, email: e.target.value })} placeholder="correo@ejemplo.com" /></label>
         <label><span>Contraseña</span><input type="password" required value={credentials.password} onChange={(e) => setCredentials({ ...credentials, password: e.target.value })} placeholder="••••••••" /></label>
-        <button disabled={loading}>{loading ? "Ingresando…" : "Ingresar al panel"}<span>→</span></button>
-        <a href="/">← Volver a la tienda</a>
+        <button disabled={loading}><LogIn size={18} aria-hidden="true" />{loading ? "Ingresando…" : "Ingresar al panel"}<ChevronRight size={17} aria-hidden="true" /></button>
+        <a href="/"><ArrowLeft size={15} aria-hidden="true" /> Volver a la tienda</a>
       </form>
       {notice && <AdminToast notice={notice} />}
     </main>
@@ -120,12 +146,12 @@ export default function AdminDashboard() {
     <main className="admin-shell">
       <aside className="admin-sidebar">
         <a href="/" className="admin-brand"><span>26</span><strong>Modo 26<small>Administración</small></strong></a>
-        <nav><button className={section === "orders" ? "active" : ""} onClick={() => setSection("orders")}>Pedidos</button><button className={section === "products" ? "active" : ""} onClick={() => setSection("products")}>Productos</button><a href="/" target="_blank" rel="noreferrer">Ver tienda ↗</a></nav>
-        <button onClick={logout}>Cerrar sesión</button>
+        <nav><button className={section === "orders" ? "active" : ""} onClick={() => setSection("orders")}><ClipboardList size={18} aria-hidden="true" />Pedidos</button><button className={section === "products" ? "active" : ""} onClick={() => setSection("products")}><Package size={18} aria-hidden="true" />Productos</button><a href="/" target="_blank" rel="noreferrer"><ExternalLink size={18} aria-hidden="true" />Ver tienda</a></nav>
+        <button onClick={logout}><LogOut size={18} aria-hidden="true" />Cerrar sesión</button>
       </aside>
       <section className="admin-content" id="pedidos">
         {section === "products" ? <ProductsPanel api={api} session={session} notify={notify} /> : <>
-        <header><div><p className="admin-eyebrow">Panel administrativo</p><h1>Pedidos</h1><p>Consulta las solicitudes y acompaña cada entrega.</p></div><button className="refresh" onClick={loadOrders}>↻ Actualizar</button></header>
+        <header><div><p className="admin-eyebrow">Panel administrativo</p><h1>Pedidos</h1><p>Consulta las solicitudes y acompaña cada entrega.</p></div><button className="refresh" onClick={loadOrders}><RefreshCw size={17} aria-hidden="true" />Actualizar</button></header>
         <div className="metric-grid">
           <article><span>Nuevas</span><strong>{counts.new}</strong><i className="dot new" /></article>
           <article><span>En proceso</span><strong>{counts.process}</strong><i className="dot process" /></article>
@@ -136,7 +162,7 @@ export default function AdminDashboard() {
           <div className="orders-toolbar"><div><h2>Solicitudes recientes</h2><small>{filtered.length} resultados</small></div><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar código o cliente" /><select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}><option>Todos</option>{statuses.map((item) => <option key={item}>{item}</option>)}</select></div>
           {loading ? <div className="admin-empty">Consultando pedidos…</div> : !filtered.length ? <div className="admin-empty"><span>26</span><h3>No hay pedidos para mostrar</h3><p>Las nuevas solicitudes aparecerán aquí automáticamente.</p></div> : (
             <div className="orders-list">{filtered.map((order) => <article key={order.id} className="order-row">
-              <div><small>Código</small><strong>{order.order_code}</strong></div><div><small>Cliente</small><strong>{order.customer_name}</strong><span>{order.city}</span></div><div><small>Fecha</small><strong>{date.format(new Date(order.created_at))}</strong></div><div><small>Total</small><strong>{money.format(order.total)}</strong></div><div><small>Estado</small><span className={`status status-${statuses.indexOf(order.status)}`}>{order.status}</span></div><button onClick={() => setSelected(order)}>Ver pedido →</button>
+              <div><small>Código</small><strong>{order.order_code}</strong></div><div><small>Cliente</small><strong>{order.customer_name}</strong><span>{order.city}</span></div><div><small>Fecha</small><strong>{date.format(new Date(order.created_at))}</strong></div><div><small>Total</small><strong>{money.format(order.total)}</strong></div><div><small>Estado</small><span className={`status status-${statuses.indexOf(order.status)}`}>{order.status}</span></div><button onClick={() => setSelected(order)}>Ver pedido<ChevronRight size={16} aria-hidden="true" /></button>
             </article>)}</div>
           )}
         </div></>}
@@ -150,15 +176,16 @@ export default function AdminDashboard() {
 function OrderDetail({ order, onClose, onStatus }) {
   const whatsapp = `https://wa.me/57${String(order.customer_whatsapp).replace(/\D/g, "")}`;
   return <div className="admin-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}><aside className="order-detail">
-    <button className="detail-close" onClick={onClose} aria-label="Cerrar">×</button>
+    <button className="detail-close" onClick={onClose} aria-label="Cerrar"><X size={20} aria-hidden="true" /></button>
     <p className="admin-eyebrow">{order.order_code}</p><h2>Detalle del pedido</h2>
     <div className="detail-block"><h3>Cliente y entrega</h3><dl><div><dt>Cliente</dt><dd>{order.customer_name}</dd></div><div><dt>WhatsApp</dt><dd>{order.customer_whatsapp}</dd></div><div><dt>Ubicación</dt><dd>{order.address}, {order.neighborhood}, {order.city}</dd></div><div><dt>Entrega</dt><dd>{order.delivery_method}</dd></div><div><dt>Pago</dt><dd>{order.payment_method}</dd></div></dl></div>
     <div className="detail-block"><h3>Prendas</h3>{(order.order_items || []).map((item) => <div className="detail-item" key={item.id}><span><strong>{item.product_name}</strong><small>Talla {item.selected_size} · Cantidad {item.quantity}</small></span><b>{money.format(item.line_total)}</b></div>)}</div>
     {order.notes && <div className="detail-block"><h3>Indicaciones</h3><p>{order.notes}</p></div>}
     <div className="detail-total"><span>Total</span><strong>{money.format(order.total)}</strong></div>
     <label className="status-control"><span>Estado actual</span><select value={order.status} onChange={(e) => onStatus(order, e.target.value)}>{statuses.map((item) => <option key={item}>{item}</option>)}</select></label>
-    <a className="whatsapp-action" href={whatsapp} target="_blank" rel="noreferrer">Abrir conversación en WhatsApp ↗</a>
+    <a className="whatsapp-action" href={whatsapp} target="_blank" rel="noreferrer"><MessageCircle size={18} aria-hidden="true" />Abrir conversación en WhatsApp<ExternalLink size={15} aria-hidden="true" /></a>
   </aside></div>;
 }
 
-function AdminToast({ notice }) { return <div className={`admin-toast ${notice.type}`} role="status"><span>{notice.type === "positive" ? "✓" : "!"}</span>{notice.text}</div>; }
+function AdminToast({ notice }) { return <div className={`admin-toast ${notice.type}`} role="status"><span>{notice.type === "positive" ? <CircleCheck size={18} aria-hidden="true" /> : <CircleAlert size={18} aria-hidden="true" />}</span>{notice.text}</div>; }
+
